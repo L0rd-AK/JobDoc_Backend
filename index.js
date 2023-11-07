@@ -59,12 +59,21 @@ async function run() {
         const result = await cursor.toArray();
         res.send(result)
       })
-      app.put('/my-cart/:id', async(req,res)=>{
+    app.get('/applied-jobs/:id', async(req,res)=>{
         const id = req.params.id;
-        const filter = {_id: (id)};
+        const cursor = myDB.find({
+          Applied: true,
+          userEmail: id
+        });
+        const result = await cursor.toArray();
+        res.send(result)
+      })
+      app.put('/all-jobs/:id', async(req,res)=>{
+        const id = req.params.id;
+        const filter = {_id: new ObjectId(id)};
         const options={upsert: true}
         const updatedJob=req.body;
-        console.log(updatedJob.userEmail,updatedJob.name,updatedJob.photo,updatedJob.brand,updatedJob.price,updatedJob.type,updatedJob.rating,updatedJob.description);
+        //console.log(updatedJob.userEmail,updatedJob.name,updatedJob.photo,updatedJob.brand,updatedJob.price,updatedJob.type,updatedJob.rating,updatedJob.description);
         const Job={
           // name,photo,brand,price,type,rating,description
           $set:{
@@ -77,10 +86,30 @@ async function run() {
             Job_Applicants_Number: updatedJob.Job_Applicants_Number,
             Application_Deadline: updatedJob.Application_Deadline,
             Job_Description: updatedJob.Job_Description,
+            Posted: updatedJob.Posted,
+            Applied: updatedJob.Applied
           }
           
         }
-        const resust = await myCart.updateOne(filter,Job,options);
+        const resust = await myDB.updateOne(filter,Job,options);
+        res.send(resust)
+      })
+      app.put('/applied-jobs/:id', async(req,res)=>{
+        const id = req.params.id;
+        const filter = {_id: new ObjectId(id)};
+        const options={upsert: true}
+        const AppliedJob=req.body;
+        //console.log(updatedJob.userEmail,updatedJob.name,updatedJob.photo,updatedJob.brand,updatedJob.price,updatedJob.type,updatedJob.rating,updatedJob.description);
+        const Job={
+          // name,photo,brand,price,type,rating,description
+          $set:{
+            Applied: AppliedJob.Applied,
+            Job_Applicants_Number: AppliedJob.Job_Applicants_Number,
+            userEmail: AppliedJob.userEmail
+          }
+          
+        }
+        const resust = await myDB.updateOne(filter,Job,options);
         res.send(resust)
       })
   
