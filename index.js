@@ -1,5 +1,6 @@
 const express=require('express');
 const cors=require('cors');
+const JWT=require('jsonwebtoken');
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app=express();
@@ -24,7 +25,13 @@ async function run() {
     await client.connect();
     await client.db("admin").command({ ping: 1 });
     const myDB=client.db('JobDoc').collection('Jobs')
-    // ========================================= all jobs =============================================================
+    // ========================================= JWT secure api =============================================================
+      app.post('/jwt',async(req,res)=>{
+        const user=req.body;
+        const token=JWT.sign(user,process.env.TOKEN,{expiresIn:'1h'})
+        res.send(token);
+      })
+    // ========================================= all jobs + update + my job api =============================================================
     app.get('/all-jobs', async(req,res)=>{
         const cursor=myDB.find();
         const result=await cursor.toArray();
