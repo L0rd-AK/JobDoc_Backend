@@ -6,7 +6,10 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app=express();
 const port=process.env.PORT || 5000;
 // ==========middleware==========
-app.use(cors());
+app.use(cors({
+  origin:['http://localhost:5173'],
+  credentials: true
+}));
 app.use(express.json());
 // =======================================================================================
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.u9t7oll.mongodb.net/?retryWrites=true&w=majority`;
@@ -29,7 +32,13 @@ async function run() {
       app.post('/jwt',async(req,res)=>{
         const user=req.body;
         const token=JWT.sign(user,process.env.TOKEN,{expiresIn:'1h'})
-        res.send(token);
+        res
+        .cookie('token',token,{
+          httpOnly: true,
+          secure: false,
+          sameSite: 'none'
+        })
+        .send({success: ture});
       })
     // ========================================= all jobs + update + my job api =============================================================
     app.get('/all-jobs', async(req,res)=>{
