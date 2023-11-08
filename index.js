@@ -1,6 +1,7 @@
 const express=require('express');
 const cors=require('cors');
 const JWT=require('jsonwebtoken');
+const cookieParser=require('cookie-parser')
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app=express();
@@ -11,6 +12,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(cookieParser());
 // =======================================================================================
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.u9t7oll.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -38,7 +40,7 @@ async function run() {
           secure: false,
           sameSite: 'none'
         })
-        .send({success: ture});
+        .send({success: true});
       })
     // ========================================= all jobs + update + my job api =============================================================
     app.get('/all-jobs', async(req,res)=>{
