@@ -1,6 +1,6 @@
 const express=require('express');
 const cors=require('cors');
-const JWT=require('jsonwebtoken');
+const jwt=require('jsonwebtoken');
 const cookieParser=require('cookie-parser')
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -8,11 +8,24 @@ const app=express();
 const port=process.env.PORT || 5000;
 // ==========middleware==========
 app.use(cors({
-  origin:['http://localhost:5173'],
+  origin:['https://jobdoc-de92b.web.app','https://jobdoc-de92b.firebaseapp.com'],
   credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
+// ========== custom middleware ==========
+const verifyToken=async(req,res,next)=>{
+  const token=req.cookies?.token;
+  if(!token){
+    return res.status(401).send({message:'Not Authorized'})
+  }
+  jwt.verify(token,process.env.TOKEN,(err,decoded)=>{
+      if(err)return res.status(401).send({message:'Not Authorized'})
+      req.user=decoded
+    console.log('success');
+      next()
+  })  
+}
 // =======================================================================================
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.u9t7oll.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -33,19 +46,39 @@ async function run() {
     // ========================================= JWT secure api =============================================================
       app.post('/jwt',async(req,res)=>{
         const user=req.body;
-        const token=JWT.sign(user,process.env.TOKEN,{expiresIn:'1h'})
-        res
-        .cookie('token',token,{
+        console.log(user);
+        const token=jwt.sign(user,process.env.TOKEN,{expiresIn:'1h'})
+        res.cookie('token',token,{
           httpOnly: true,
-          secure: false,
+          secure: true,
           sameSite: 'none'
         })
         .send({success: true});
       })
+      app.post('/logout',async(req,res)=>{
+        const user=req.body;
+        res.clearCookie('token',{maxAge:0})
+        .send({success: true});
+      })
     // ========================================= all jobs + update + my job api =============================================================
     app.get('/all-jobs', async(req,res)=>{
+      console.log(req.cookies?.token);
         const cursor=myDB.find();
         const result=await cursor.toArray();
+        res.send(result)
+      })
+    app.get(`/searched-jobs/:id`, async(req,res)=>{
+      const id = req.params.id;
+      console.log(id);
+        const cursor = myDB.find({
+          Job_Type: {
+            // $regex : `(?i)${id}`
+            // $regex : `/${id}/i`
+            $regex: `${id}`,
+            $options: 'i'
+          }
+        });
+        const result = await cursor.toArray();
         res.send(result)
       })
     app.post('/all-jobs', async(req,res)=>{
@@ -69,15 +102,19 @@ async function run() {
         const result = await myDB.findOne(query);
         res.send(result)
       })
-    app.get('/my-jobs/:id', async(req,res)=>{
+    app.get('/my-jobs/:id',verifyToken, async(req,res)=>{
         const id = req.params.id;
+        // console.log(id,req.user.email);
+        if(req.user.email!=id){
+          return res.status(403).send({message:'Forbidden Access'})
+        }
         const cursor = myDB.find({
           userEmail: id,
         });
         const result = await cursor.toArray();
         res.send(result)
       })
-    app.get('/applied-jobs/:id', async(req,res)=>{
+    app.get('/applied-jobs/:id',verifyToken, async(req,res)=>{
         const id = req.params.id;
         const cursor = myDB.find({
           Applied: true,
@@ -91,9 +128,8 @@ async function run() {
         const filter = {_id: new ObjectId(id)};
         const options={upsert: true}
         const updatedJob=req.body;
-        //console.log(updatedJob.userEmail,updatedJob.name,updatedJob.photo,updatedJob.brand,updatedJob.price,updatedJob.type,updatedJob.rating,updatedJob.description);
+        
         const Job={
-          // name,photo,brand,price,type,rating,description
           $set:{
             Job_Title: updatedJob.Job_Title,
             Name: updatedJob.Name,
