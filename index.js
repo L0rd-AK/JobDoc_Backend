@@ -8,7 +8,7 @@ const app=express();
 const port=process.env.PORT || 5000;
 // ==========middleware==========
 app.use(cors({
-  origin:['https://jobdoc-de92b.web.app','https://jobdoc-de92b.firebaseapp.com'],
+  origin:['https://jobdoc-de92b.web.app','https://jobdoc-de92b.firebaseapp.com','http://localhost:5173'],
   credentials: true
 }));
 app.use(express.json());
@@ -40,8 +40,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
-    await client.db("admin").command({ ping: 1 });
+    //await client.connect();
+    //await client.db("admin").command({ ping: 1 });
     const myDB=client.db('JobDoc').collection('Jobs')
     // ========================================= JWT secure api =============================================================
       app.post('/jwt',async(req,res)=>{
@@ -76,6 +76,12 @@ async function run() {
             // $regex : `/${id}/i`
             $regex: `${id}`,
             $options: 'i'
+          },
+          Job_Title: {
+            // $regex : `(?i)${id}`
+            // $regex : `/${id}/i`
+            $regex: `${id}`,
+            $options: 'i'
           }
         });
         const result = await cursor.toArray();
@@ -104,14 +110,16 @@ async function run() {
       })
     app.get('/my-jobs/:id',verifyToken, async(req,res)=>{
         const id = req.params.id;
-        // console.log(id,req.user.email);
+        console.log(id,req.user.email);
         if(req.user.email!=id){
           return res.status(403).send({message:'Forbidden Access'})
         }
         const cursor = myDB.find({
+          posted: true,
           userEmail: id,
         });
         const result = await cursor.toArray();
+        console.log(result);
         res.send(result)
       })
     app.get('/applied-jobs/:id',verifyToken, async(req,res)=>{
@@ -140,8 +148,7 @@ async function run() {
             Job_Applicants_Number: updatedJob.Job_Applicants_Number,
             Application_Deadline: updatedJob.Application_Deadline,
             Job_Description: updatedJob.Job_Description,
-            Posted: updatedJob.Posted,
-            Applied: updatedJob.Applied
+            Posted: true,
           }
           
         }
@@ -153,9 +160,7 @@ async function run() {
         const filter = {_id: new ObjectId(id)};
         const options={upsert: true}
         const AppliedJob=req.body;
-        //console.log(updatedJob.userEmail,updatedJob.name,updatedJob.photo,updatedJob.brand,updatedJob.price,updatedJob.type,updatedJob.rating,updatedJob.description);
         const Job={
-          // name,photo,brand,price,type,rating,description
           $set:{
             Applied: AppliedJob.Applied,
             Job_Applicants_Number: AppliedJob.Job_Applicants_Number,
